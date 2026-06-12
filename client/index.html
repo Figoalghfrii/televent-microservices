@@ -1,0 +1,1020 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TelEvent Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <button
+        class="sidebar-toggle d-lg-none"
+        type="button"
+        @click="sidebarOpen = true"
+      >
+        <i class="bi bi-list"></i>
+      </button>
+
+      <aside class="app-sidebar" :class="{ show: sidebarOpen }">
+        <button class="brand" type="button" @click="goTo('dashboard')">
+          <span class="brand-mark">
+              <img src="img/student-union.png" alt="Tel-Event logo" />
+          </span>
+          <span>Tel-Event</span>
+        </button>
+
+        <nav class="sidebar-nav">
+          <button
+            v-for="item in navItems"
+            :key="item.key"
+            class="nav-item"
+            :class="{ active: currentView === item.key }"
+            type="button"
+            @click="goTo(item.key)"
+          >
+            <i :class="item.icon"></i><span>{{ item.label }}</span>
+          </button>
+        </nav>
+      </aside>
+
+      <button
+        class="sidebar-backdrop"
+        :class="{ show: sidebarOpen }"
+        type="button"
+        @click="sidebarOpen = false"
+      ></button>
+
+      <main class="app-main">
+        <header class="topbar">
+          <div>
+            <span class="breadcrumb-lite">Dashboard / {{ currentTitle }}</span>
+            <h1>{{ currentTitle }}</h1>
+          </div>
+          <div class="topbar-actions">
+            <button class="btn btn-soft" type="button" @click="loadAll">
+              <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
+            <div class="profile-chip">
+              <span class="avatar">EO</span>
+              <div><strong>Event Admin</strong><small>Organizer</small></div>
+            </div>
+          </div>
+        </header>
+
+        <div
+          v-if="feedback.message"
+          class="alert feedback-alert"
+          :class="feedback.type === 'success' ? 'alert-success' : 'alert-danger'"
+        >
+          {{ feedback.message }}
+        </div>
+
+        <div v-if="loading" class="loading-card">
+          <div
+            class="spinner-border spinner-border-sm text-danger"
+            role="status"
+          ></div>
+          <span>Loading data...</span>
+        </div>
+
+        <section v-show="currentView === 'dashboard'">
+          <div class="stats-grid">
+            <article class="stat-card">
+              <div class="stat-icon"><i class="bi bi-calendar-event"></i></div>
+              <span>Total Events</span><strong>{{ events.length }}</strong>
+            </article>
+            <article class="stat-card">
+              <div class="stat-icon"><i class="bi bi-tags"></i></div>
+              <span>Ticket Categories</span
+              ><strong>{{ ticketCategories.length }}</strong>
+            </article>
+            <article class="stat-card">
+              <div class="stat-icon"><i class="bi bi-people"></i></div>
+              <span>Total Staffs</span><strong>{{ staffs.length }}</strong>
+            </article>
+            <article class="stat-card">
+              <div class="stat-icon"><i class="bi bi-mic"></i></div>
+              <span>Total Speakers</span><strong>{{ speakers.length }}</strong>
+            </article>
+          </div>
+
+          <div class="content-split">
+            <div>
+              <div class="section-heading">
+                <div>
+                  <span>Live planning</span>
+                  <h2>Upcoming Events</h2>
+                </div>
+                <button
+                  class="btn btn-soft"
+                  type="button"
+                  @click="goTo('events')"
+                >
+                  View all
+                </button>
+              </div>
+              <div class="event-grid">
+                <event-card
+                  v-for="event in upcomingEvents"
+                  :key="event.id"
+                  :event="event"
+                  :ticket-stats="ticketStatsForEvent(event.id)"
+                  @edit="openEventModal"
+                ></event-card>
+                <empty-state
+                  v-if="!upcomingEvents.length"
+                  icon="bi-calendar-plus"
+                  title="No upcoming events"
+                  text="Create or update an event with Upcoming status."
+                ></empty-state>
+              </div>
+            </div>
+
+            <aside class="activity-card">
+              <div class="section-heading compact">
+                <div>
+                  <span>Recent work</span>
+                  <h2>Assignments</h2>
+                </div>
+              </div>
+              <div class="summary-meter">
+                <div>
+                  <strong
+                    >{{ staffAssignments.length + speakerAssignments.length
+                    }}</strong
+                  ><span>Total assignments</span>
+                </div>
+                <div>
+                  <strong>{{ activeStaffAssignments }}</strong
+                  ><span>Active staff tasks</span>
+                </div>
+              </div>
+              <div class="activity-list">
+                <div
+                  v-for="item in staffAssignments.slice(0, 4)"
+                  :key="'staff-dash-' + item.id"
+                  class="activity-item"
+                >
+                  <span class="activity-icon"
+                    ><i class="bi bi-person-check"></i
+                  ></span>
+                  <div>
+                    <strong>{{ getStaffName(item.staff_id) }}</strong>
+                    <p>{{ item.role_tugas || 'Staff assignment' }}</p>
+                    <small>{{ getEventName(item.event_id) }}</small>
+                  </div>
+                </div>
+                <div
+                  v-for="item in speakerAssignments.slice(0, 3)"
+                  :key="'speaker-dash-' + item.id"
+                  class="activity-item"
+                >
+                  <span class="activity-icon"><i class="bi bi-mic"></i></span>
+                  <div>
+                    <strong>{{ getSpeakerName(item.speaker_id) }}</strong>
+                    <p>{{ item.judul_materi || 'Speaker session' }}</p>
+                    <small>{{ getEventName(item.event_id) }}</small>
+                  </div>
+                </div>
+                <div
+                  v-if="!staffAssignments.length && !speakerAssignments.length"
+                  class="empty-mini"
+                >
+                  No assignments yet.
+                </div>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <section v-show="currentView === 'events'">
+          <div class="toolbar-card">
+            <div>
+              <h2>Event Management</h2>
+              <p>
+                Manage seminars, workshops, competitions, and campus programs.
+              </p>
+            </div>
+            <button
+              class="btn btn-primary"
+              type="button"
+              @click="openEventModal()"
+            >
+              <i class="bi bi-plus-lg"></i> Add Event
+            </button>
+          </div>
+          <form class="filter-bar" @submit.prevent>
+            <label class="filter-search">
+              <i class="bi bi-search"></i>
+              <input
+                v-model="filters.events.search"
+                type="search"
+                placeholder="Search name, location, description, status"
+              />
+            </label>
+            <select v-model="filters.events.status" class="form-select">
+              <option value="">All statuses</option>
+              <option value="Upcoming">Upcoming</option>
+              <option value="Ongoing">Ongoing</option>
+              <option value="Finished">Finished</option>
+              <option value="Cancelled">Cancelled</option>
+            </select>
+            <select v-model="filters.events.sortBy" class="form-select">
+              <option value="tanggal">Sort by date</option>
+              <option value="nama_event">Sort by name</option>
+              <option value="status_event">Sort by status</option>
+            </select>
+            <select v-model="filters.events.order" class="form-select">
+              <option value="asc">Ascending</option>
+              <option value="desc">Descending</option>
+            </select>
+            <button class="btn btn-soft" type="button" @click="resetFilters('events')">
+              <i class="bi bi-x-circle"></i> Clear
+            </button>
+          </form>
+          <div class="event-grid">
+            <event-card
+              v-for="event in filteredEvents"
+              :key="event.id"
+              :event="event"
+              :ticket-stats="ticketStatsForEvent(event.id)"
+              @edit="openEventModal"
+              @delete="deleteEvent"
+              show-actions
+            ></event-card>
+            <empty-state
+              v-if="!filteredEvents.length"
+              icon="bi-calendar-x"
+              title="No events found"
+              text="Adjust the search filter or add a new event."
+            ></empty-state>
+          </div>
+        </section>
+
+        <section v-show="currentView === 'tickets'">
+          <div class="toolbar-card">
+            <div>
+              <h2>Ticket & Quota Management</h2>
+              <p>
+                Track ticket categories, capacity, sold tickets, and remaining
+                quota.
+              </p>
+            </div>
+            <button
+              class="btn btn-primary"
+              type="button"
+              @click="openTicketModal()"
+            >
+              <i class="bi bi-plus-lg"></i> Add Ticket
+            </button>
+          </div>
+          <form class="filter-bar" @submit.prevent>
+            <label class="filter-search">
+              <i class="bi bi-search"></i>
+              <input
+                v-model="filters.tickets.search"
+                type="search"
+                placeholder="Search ticket, event, price, quota"
+              />
+            </label>
+            <select v-model="filters.tickets.sortBy" class="form-select">
+              <option value="nama_tiket">Sort by ticket</option>
+              <option value="event_name">Sort by event</option>
+              <option value="harga">Sort by price</option>
+              <option value="kuota">Sort by quota</option>
+              <option value="tiket_terjual">Sort by sold</option>
+            </select>
+            <select v-model="filters.tickets.order" class="form-select">
+              <option value="asc">Ascending</option>
+              <option value="desc">Descending</option>
+            </select>
+            <button class="btn btn-soft" type="button" @click="resetFilters('tickets')">
+              <i class="bi bi-x-circle"></i> Clear
+            </button>
+          </form>
+          <data-table :columns="ticketColumns" :rows="ticketRows">
+            <template #actions="{ row }">
+              <button
+                class="btn btn-outline-secondary btn-icon"
+                type="button"
+                @click="openTicketModal(row.raw)"
+                title="Edit"
+              >
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button
+                class="btn btn-outline-danger btn-icon"
+                type="button"
+                @click="deleteTicketCategory(row.raw.id)"
+                title="Delete"
+              >
+                <i class="bi bi-trash"></i>
+              </button>
+            </template>
+          </data-table>
+        </section>
+
+        <section v-show="currentView === 'staff'">
+          <div class="toolbar-card">
+            <div>
+              <h2>Staff Management</h2>
+              <p>Maintain staff profiles before assigning them to events.</p>
+            </div>
+            <button
+              class="btn btn-primary"
+              type="button"
+              @click="openStaffModal()"
+            >
+              <i class="bi bi-plus-lg"></i> Add Staff
+            </button>
+          </div>
+          <form class="filter-bar" @submit.prevent>
+            <label class="filter-search">
+              <i class="bi bi-search"></i>
+              <input
+                v-model="filters.staff.search"
+                type="search"
+                placeholder="Search name, division, phone, email"
+              />
+            </label>
+            <select v-model="filters.staff.sortBy" class="form-select">
+              <option value="nama_staff">Sort by name</option>
+              <option value="divisi">Sort by division</option>
+              <option value="email">Sort by email</option>
+            </select>
+            <select v-model="filters.staff.order" class="form-select">
+              <option value="asc">Ascending</option>
+              <option value="desc">Descending</option>
+            </select>
+            <button class="btn btn-soft" type="button" @click="resetFilters('staff')">
+              <i class="bi bi-x-circle"></i> Clear
+            </button>
+          </form>
+          <data-table :columns="staffColumns" :rows="staffRows">
+            <template #actions="{ row }">
+              <button
+                class="btn btn-outline-secondary btn-icon"
+                type="button"
+                @click="openStaffModal(row.raw)"
+                title="Edit"
+              >
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button
+                class="btn btn-outline-danger btn-icon"
+                type="button"
+                @click="deleteStaff(row.raw.id)"
+                title="Delete"
+              >
+                <i class="bi bi-trash"></i>
+              </button>
+            </template>
+          </data-table>
+        </section>
+
+        <section v-show="currentView === 'speakers'">
+          <div class="toolbar-card">
+            <div>
+              <h2>Speaker Management</h2>
+              <p>
+                Manage speaker profiles, institutions, expertise, and contact
+                details.
+              </p>
+            </div>
+            <button
+              class="btn btn-primary"
+              type="button"
+              @click="openSpeakerModal()"
+            >
+              <i class="bi bi-plus-lg"></i> Add Speaker
+            </button>
+          </div>
+          <form class="filter-bar" @submit.prevent>
+            <label class="filter-search">
+              <i class="bi bi-search"></i>
+              <input
+                v-model="filters.speakers.search"
+                type="search"
+                placeholder="Search speaker, institution, expertise, contact"
+              />
+            </label>
+            <select v-model="filters.speakers.sortBy" class="form-select">
+              <option value="nama_speaker">Sort by speaker</option>
+              <option value="instansi">Sort by institution</option>
+              <option value="bidang_keahlian">Sort by expertise</option>
+              <option value="email">Sort by email</option>
+            </select>
+            <select v-model="filters.speakers.order" class="form-select">
+              <option value="asc">Ascending</option>
+              <option value="desc">Descending</option>
+            </select>
+            <button class="btn btn-soft" type="button" @click="resetFilters('speakers')">
+              <i class="bi bi-x-circle"></i> Clear
+            </button>
+          </form>
+          <data-table :columns="speakerColumns" :rows="speakerRows">
+            <template #actions="{ row }">
+              <button
+                class="btn btn-outline-secondary btn-icon"
+                type="button"
+                @click="openSpeakerModal(row.raw)"
+                title="Edit"
+              >
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button
+                class="btn btn-outline-danger btn-icon"
+                type="button"
+                @click="deleteSpeaker(row.raw.id)"
+                title="Delete"
+              >
+                <i class="bi bi-trash"></i>
+              </button>
+            </template>
+          </data-table>
+        </section>
+
+        <section v-show="currentView === 'assignments'">
+          <div class="toolbar-card">
+            <div>
+              <h2>Assignments</h2>
+              <p>
+                Connect staff and speakers to Telkom University events without
+                manual ID input.
+              </p>
+            </div>
+          </div>
+          <div class="assignment-grid">
+            <article class="form-card">
+              <div class="section-heading compact">
+                <div>
+                  <span>Staff</span>
+                  <h2>Staff Assignment</h2>
+                </div>
+              </div>
+              <form class="row g-3" @submit.prevent="saveStaffAssignment">
+                <div class="col-md-6">
+                  <label class="form-label">Event</label>
+                  <select
+                    v-model="forms.staffAssignment.event_id"
+                    class="form-select"
+                    required
+                  >
+                    <option value="" disabled>Select event</option>
+                    <option
+                      v-for="event in events"
+                      :key="'sa-event-' + event.id"
+                      :value="event.id"
+                    >
+                      {{ event.nama_event }}
+                    </option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Staff</label>
+                  <select
+                    v-model="forms.staffAssignment.staff_id"
+                    class="form-select"
+                    required
+                  >
+                    <option value="" disabled>Select staff</option>
+                    <option
+                      v-for="staff in staffs"
+                      :key="'sa-staff-' + staff.id"
+                      :value="staff.id"
+                    >
+                      {{ staff.nama_staff }}
+                    </option>
+                  </select>
+                </div>
+                <div class="col-md-7">
+                  <label class="form-label">Role Tugas</label>
+                  <input
+                    v-model="forms.staffAssignment.role_tugas"
+                    class="form-control"
+                    placeholder="Registration coordinator"
+                  />
+                </div>
+                <div class="col-md-5">
+                  <label class="form-label">Status</label>
+                  <select
+                    v-model="forms.staffAssignment.status_tugas"
+                    class="form-select"
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
+                </div>
+                <div class="col-12 d-grid">
+                  <button class="btn btn-primary" type="submit">
+                    Save Staff Assignment
+                  </button>
+                </div>
+              </form>
+            </article>
+
+            <article class="form-card">
+              <div class="section-heading compact">
+                <div>
+                  <span>Speaker</span>
+                  <h2>Speaker Assignment</h2>
+                </div>
+              </div>
+              <form class="row g-3" @submit.prevent="saveSpeakerAssignment">
+                <div class="col-md-6">
+                  <label class="form-label">Event</label>
+                  <select
+                    v-model="forms.speakerAssignment.event_id"
+                    class="form-select"
+                    required
+                  >
+                    <option value="" disabled>Select event</option>
+                    <option
+                      v-for="event in events"
+                      :key="'spa-event-' + event.id"
+                      :value="event.id"
+                    >
+                      {{ event.nama_event }}
+                    </option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Speaker</label>
+                  <select
+                    v-model="forms.speakerAssignment.speaker_id"
+                    class="form-select"
+                    required
+                  >
+                    <option value="" disabled>Select speaker</option>
+                    <option
+                      v-for="speaker in speakers"
+                      :key="'spa-speaker-' + speaker.id"
+                      :value="speaker.id"
+                    >
+                      {{ speaker.nama_speaker }}
+                    </option>
+                  </select>
+                </div>
+                <div class="col-md-7">
+                  <label class="form-label">Judul Materi</label>
+                  <input
+                    v-model="forms.speakerAssignment.judul_materi"
+                    class="form-control"
+                    placeholder="AI for Smart Campus"
+                  />
+                </div>
+                <div class="col-md-5">
+                  <label class="form-label">Sesi</label>
+                  <input
+                    v-model="forms.speakerAssignment.sesi"
+                    class="form-control"
+                    placeholder="Keynote"
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Jam Mulai</label>
+                  <input
+                    v-model="forms.speakerAssignment.jam_mulai"
+                    class="form-control"
+                    type="time"
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Jam Selesai</label>
+                  <input
+                    v-model="forms.speakerAssignment.jam_selesai"
+                    class="form-control"
+                    type="time"
+                  />
+                </div>
+                <div class="col-12 d-grid">
+                  <button class="btn btn-primary" type="submit">
+                    Save Speaker Assignment
+                  </button>
+                </div>
+              </form>
+            </article>
+          </div>
+
+          <div class="assignment-grid mt-4">
+            <article class="table-card">
+              <div class="section-heading compact">
+                <div>
+                  <span>Staff work</span>
+                  <h2>Staff Assignment List</h2>
+                </div>
+              </div>
+              <form class="filter-bar compact-filter" @submit.prevent>
+                <label class="filter-search">
+                  <i class="bi bi-search"></i>
+                  <input
+                    v-model="filters.assignments.search"
+                    type="search"
+                    placeholder="Search assignments"
+                  />
+                </label>
+                <button class="btn btn-soft" type="button" @click="resetFilters('assignments')">
+                  <i class="bi bi-x-circle"></i> Clear
+                </button>
+              </form>
+              <div class="activity-list">
+                <div
+                  v-for="item in filteredStaffAssignments"
+                  :key="'staff-assignment-' + item.id"
+                  class="activity-item"
+                >
+                  <span class="activity-icon"
+                    ><i class="bi bi-person-check"></i
+                  ></span>
+                  <div>
+                    <strong>{{ getStaffName(item.staff_id) }}</strong>
+                    <p>{{ getEventName(item.event_id) }}</p>
+                    <small
+                      >{{ item.role_tugas || '-' }} · {{ item.status_tugas ||
+                      '-' }}</small
+                    >
+                  </div>
+                </div>
+                <div v-if="!filteredStaffAssignments.length" class="empty-mini">
+                  No staff assignments found.
+                </div>
+              </div>
+            </article>
+            <article class="table-card">
+              <div class="section-heading compact">
+                <div>
+                  <span>Speaker work</span>
+                  <h2>Speaker Assignment List</h2>
+                </div>
+              </div>
+              <form class="filter-bar compact-filter" @submit.prevent>
+                <label class="filter-search">
+                  <i class="bi bi-search"></i>
+                  <input
+                    v-model="filters.assignments.search"
+                    type="search"
+                    placeholder="Search assignments"
+                  />
+                </label>
+                <button class="btn btn-soft" type="button" @click="resetFilters('assignments')">
+                  <i class="bi bi-x-circle"></i> Clear
+                </button>
+              </form>
+              <div class="activity-list">
+                <div
+                  v-for="item in filteredSpeakerAssignments"
+                  :key="'speaker-assignment-' + item.id"
+                  class="activity-item"
+                >
+                  <span class="activity-icon"><i class="bi bi-mic"></i></span>
+                  <div>
+                    <strong>{{ getSpeakerName(item.speaker_id) }}</strong>
+                    <p>{{ getEventName(item.event_id) }}</p>
+                    <small
+                      >{{ item.judul_materi || '-' }} · {{ item.sesi || '-' }} ·
+                      {{ item.jam_mulai || '-' }} - {{ item.jam_selesai || '-'
+                      }}</small
+                    >
+                  </div>
+                </div>
+                <div v-if="!filteredSpeakerAssignments.length" class="empty-mini">
+                  No speaker assignments found.
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <footer class="app-footer">
+          <span>Copyright © 2026 Campus Event Organizer</span>
+          <span>TelEvent Microservices Dashboard</span>
+        </footer>
+      </main>
+
+      <div class="modal fade" id="eventModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+          <div class="modal-content">
+            <form @submit.prevent="saveEvent">
+              <div class="modal-header">
+                <h5 class="modal-title">
+                  {{ editing.event ? 'Edit Event' : 'Add Event' }}
+                </h5>
+                <button
+                  type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                ></button>
+              </div>
+              <div class="modal-body row g-3">
+                <div class="col-md-8">
+                  <label class="form-label">Event Name</label
+                  ><input
+                    v-model="forms.event.nama_event"
+                    class="form-control"
+                    required
+                  />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Status</label
+                  ><select
+                    v-model="forms.event.status_event"
+                    class="form-select"
+                  >
+                    <option>Upcoming</option>
+                    <option>Ongoing</option>
+                    <option>Finished</option>
+                    <option>Cancelled</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Date</label
+                  ><input
+                    v-model="forms.event.tanggal"
+                    class="form-control"
+                    type="date"
+                    required
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Time</label
+                  ><input
+                    v-model="forms.event.waktu"
+                    class="form-control"
+                    type="time"
+                  />
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Location</label
+                  ><input
+                    v-model="forms.event.lokasi"
+                    class="form-control"
+                    required
+                  />
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Description</label
+                  ><textarea
+                    v-model="forms.event.deskripsi"
+                    class="form-control"
+                    rows="4"
+                  ></textarea>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button
+                  class="btn btn-light"
+                  type="button"
+                  data-bs-dismiss="modal"
+                >
+                  Cancel</button
+                ><button class="btn btn-primary" type="submit">
+                  {{ editing.event ? 'Update Event' : 'Save Event' }}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal fade" id="ticketModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+          <div class="modal-content">
+            <form @submit.prevent="saveTicket">
+              <div class="modal-header">
+                <h5 class="modal-title">
+                  {{ editing.ticket ? 'Edit Ticket' : 'Add Ticket' }}
+                </h5>
+                <button
+                  type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                ></button>
+              </div>
+              <div class="modal-body row g-3">
+                <div class="col-md-6">
+                  <label class="form-label">Event</label
+                  ><select
+                    v-model="forms.ticket.event_id"
+                    class="form-select"
+                    required
+                  >
+                    <option value="" disabled>Select event</option>
+                    <option
+                      v-for="event in events"
+                      :key="'ticket-event-' + event.id"
+                      :value="event.id"
+                    >
+                      {{ event.nama_event }}
+                    </option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Ticket Name</label
+                  ><input
+                    v-model="forms.ticket.nama_tiket"
+                    class="form-control"
+                    required
+                  />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Price</label
+                  ><input
+                    v-model.number="forms.ticket.harga"
+                    class="form-control"
+                    type="number"
+                    min="0"
+                    required
+                  />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Quota</label
+                  ><input
+                    v-model.number="forms.ticket.kuota"
+                    class="form-control"
+                    type="number"
+                    min="0"
+                    required
+                  />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Sold</label
+                  ><input
+                    v-model.number="forms.ticket.tiket_terjual"
+                    class="form-control"
+                    type="number"
+                    min="0"
+                  />
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Description</label
+                  ><textarea
+                    v-model="forms.ticket.deskripsi"
+                    class="form-control"
+                    rows="3"
+                  ></textarea>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button
+                  class="btn btn-light"
+                  type="button"
+                  data-bs-dismiss="modal"
+                >
+                  Cancel</button
+                ><button class="btn btn-primary" type="submit">
+                  {{ editing.ticket ? 'Update Ticket' : 'Save Ticket' }}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal fade" id="staffModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+          <div class="modal-content">
+            <form @submit.prevent="saveStaff">
+              <div class="modal-header">
+                <h5 class="modal-title">
+                  {{ editing.staff ? 'Edit Staff' : 'Add Staff' }}
+                </h5>
+                <button
+                  type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                ></button>
+              </div>
+              <div class="modal-body row g-3">
+                <div class="col-md-6">
+                  <label class="form-label">Name</label
+                  ><input
+                    v-model="forms.staff.nama_staff"
+                    class="form-control"
+                    required
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Division</label
+                  ><input v-model="forms.staff.divisi" class="form-control" />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Phone</label
+                  ><input v-model="forms.staff.no_hp" class="form-control" />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Email</label
+                  ><input
+                    v-model="forms.staff.email"
+                    class="form-control"
+                    type="email"
+                  />
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button
+                  class="btn btn-light"
+                  type="button"
+                  data-bs-dismiss="modal"
+                >
+                  Cancel</button
+                ><button class="btn btn-primary" type="submit">
+                  {{ editing.staff ? 'Update Staff' : 'Save Staff' }}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div
+        class="modal fade"
+        id="speakerModal"
+        tabindex="-1"
+        aria-hidden="true"
+      >
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+          <div class="modal-content">
+            <form @submit.prevent="saveSpeaker">
+              <div class="modal-header">
+                <h5 class="modal-title">
+                  {{ editing.speaker ? 'Edit Speaker' : 'Add Speaker' }}
+                </h5>
+                <button
+                  type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                ></button>
+              </div>
+              <div class="modal-body row g-3">
+                <div class="col-md-6">
+                  <label class="form-label">Name</label
+                  ><input
+                    v-model="forms.speaker.nama_speaker"
+                    class="form-control"
+                    required
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Institution</label
+                  ><input
+                    v-model="forms.speaker.instansi"
+                    class="form-control"
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Expertise</label
+                  ><input
+                    v-model="forms.speaker.bidang_keahlian"
+                    class="form-control"
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Email</label
+                  ><input
+                    v-model="forms.speaker.email"
+                    class="form-control"
+                    type="email"
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Phone</label
+                  ><input v-model="forms.speaker.no_hp" class="form-control" />
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button
+                  class="btn btn-light"
+                  type="button"
+                  data-bs-dismiss="modal"
+                >
+                  Cancel</button
+                ><button class="btn btn-primary" type="submit">
+                  {{ editing.speaker ? 'Update Speaker' : 'Save Speaker' }}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>

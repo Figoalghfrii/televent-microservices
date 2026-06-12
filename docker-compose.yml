@@ -1,0 +1,56 @@
+services:
+  event-service:
+    build:
+      context: ./event-service
+    container_name: televent-event-service
+    env_file:
+      - ./event-service/.env
+    ports:
+      - "4001:4001"
+    restart: unless-stopped
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+
+
+  ticket-service:
+    build:
+      context: ./ticket-service
+    container_name: televent-ticket-service
+    env_file:
+      - ./ticket-service/.env
+    ports:
+      - "4002:4002"
+    restart: unless-stopped
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+
+
+  staff-service:
+    build:
+      context: ./staff-service
+    container_name: televent-staff-service
+    env_file:
+      - ./staff-service/.env
+    ports:
+      - "4003:4003"
+    restart: unless-stopped
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+
+
+  speaker-service:
+    build:
+      context: ./speaker-service
+    container_name: televent-speaker-service
+    env_file:
+      - ./speaker-service/.env
+    ports:
+      - "4004:4004"
+    restart: unless-stopped
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+
