@@ -39,7 +39,6 @@ const speakerTypeDefs = `#graphql
   }
 
   type Query {
-    hello: String!
     speakers(search: String, sort_by: String, order: String): [Speaker!]!
     speaker(id: ID!): Speaker
     speakerAssignments: [SpeakerAssignment!]!

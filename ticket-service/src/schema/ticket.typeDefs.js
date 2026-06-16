@@ -21,7 +21,6 @@ const ticketTypeDefs = `#graphql
   }
 
   type Query {
-    hello: String!
     ticketCategories(search: String, sort_by: String, order: String): [TicketCategory!]!
     ticketCategory(id: ID!): TicketCategory
     ticketCategoriesByEvent(event_id: ID!): [TicketCategory!]!

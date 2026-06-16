@@ -28,8 +28,6 @@ function buildTicketListQuery({ search, sort_by, order }) {
 
 const ticketResolvers = {
   Query: {
-    hello: () => "Hello Ticket Service",
-
     ticketCategories: (_, args) => {
       return new Promise((resolve, reject) => {
         const { sql, params } = buildTicketListQuery(args);

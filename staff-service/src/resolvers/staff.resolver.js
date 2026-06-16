@@ -27,8 +27,6 @@ function buildStaffListQuery({ search, sort_by, order }) {
 
 const staffResolvers = {
   Query: {
-    hello: () => "Hello Staff Service",
-
     staffs: (_, args) => {
       return new Promise((resolve, reject) => {
         const { sql, params } = buildStaffListQuery(args);

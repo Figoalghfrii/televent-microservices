@@ -48,8 +48,6 @@ function buildEventListQuery({ search, status, sort_by, order }) {
 
 const eventResolvers = {
   Query: {
-    hello: () => "Hello Event Service",
-
     events: (_, args) => {
       return new Promise((resolve, reject) => {
         const { sql, params } = buildEventListQuery(args);

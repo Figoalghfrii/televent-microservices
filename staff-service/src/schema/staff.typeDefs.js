@@ -33,7 +33,6 @@ const staffTypeDefs = `#graphql
   }
 
   type Query {
-    hello: String!
     staffs(search: String, sort_by: String, order: String): [Staff!]!
     staff(id: ID!): Staff
     staffAssignments: [StaffAssignment!]!

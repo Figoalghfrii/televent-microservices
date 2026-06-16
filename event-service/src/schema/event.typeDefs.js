@@ -21,7 +21,6 @@ const eventTypeDefs = `#graphql
   }
 
   type Query {
-    hello: String!
     events(search: String, status: String, sort_by: String, order: String): [Event!]!
     event(id: ID!): Event
     eventsByStatus(status_event: String!): [Event!]!

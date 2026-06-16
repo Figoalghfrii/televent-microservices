@@ -28,8 +28,6 @@ function buildSpeakerListQuery({ search, sort_by, order }) {
 
 const speakerResolvers = {
   Query: {
-    hello: () => "Hello Speaker Service",
-
     speakers: (_, args) => {
       return new Promise((resolve, reject) => {
         const { sql, params } = buildSpeakerListQuery(args);
